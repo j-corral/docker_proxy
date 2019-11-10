@@ -1,0 +1,40 @@
+version: '3' 
+
+services:
+
+  proxy_network:
+    image: jwilder/nginx-proxy:alpine
+    labels:
+      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy=true"
+    container_name: proxy_network
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./proxy/conf.d:/etc/nginx/conf.d:rw
+      - ./proxy/conf.d/uploadsize.conf:/etc/nginx/conf.d/uploadsize.conf:ro
+      - ./php/conf.d/uploadsize.ini:/etc/php/conf.d/uploadsize.ini
+      - ./proxy/vhost.d:/etc/nginx/vhost.d:rw
+      - ./proxy/html:/usr/share/nginx/html:rw
+      - ./proxy/certs:/etc/nginx/certs:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    restart: unless-stopped
+  
+  proxy_ssl:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: proxy_ssl
+    depends_on:
+      - proxy_network
+    volumes:
+      - ./proxy/certs:/etc/nginx/certs:rw
+      - ./proxy/vhost.d:/etc/nginx/vhost.d:rw
+      - ./proxy/html:/usr/share/nginx/html:rw
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+networks:
+  default:
+    external:
+      name: proxy_network
